@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from telethon import TelegramClient
 import os
 
+from bot_app.taskiq_broker import broker
 
 # Remember to use your own values from my.telegram.org!
 load_dotenv()
@@ -63,6 +64,10 @@ async def example():
         if message.photo:
             path = await message.download_media()
             print('File saved to', path)  # printed after download is done
+
+async def main():
+    await broker.startup()
+    await broker.shutdown()
 
 with client:
     client.loop.run_until_complete(main())
