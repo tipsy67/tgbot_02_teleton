@@ -1,5 +1,5 @@
 from bot_app.utils import generate_content, reply_to_message
-from bot_app.taskiq_broker import broker
+from core.taskiq_broker import broker
 
 
 @broker.task

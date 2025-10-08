@@ -1,0 +1,20 @@
+services:
+#  nginx:
+#    image: nginx:latest
+#    hostname: nginx
+#    container_name: nginx
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./tg_app/web/nginx/nginx.conf:/etc/nginx/nginx.conf
+#      - ./tg_app/web/html:/usr/share/nginx/html
+
+  redis:
+    image: redis:latest
+    hostname: redis
+    container_name: redis-tgbot
+    restart: on-failure
+    ports:
+      - "6379:6379"
+
