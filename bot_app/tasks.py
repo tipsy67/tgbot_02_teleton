@@ -5,6 +5,8 @@ from core.taskiq_broker import broker
 @broker.task
 async def process_and_reply(chat_id, message_id, original_text):
     """Обработка и отправка ответа"""
-    content = await generate_content(original_text)
+    # content = await generate_content(original_text)
+    content = original_text + " test"
+    print(content)
     await reply_to_message(chat_id, message_id, content)
 

@@ -1,26 +1,45 @@
 import asyncio
+import random
 
 from telethon import TelegramClient
 
 from core.config import settings
 
-# client = TelegramClient(settings.tg.session, int(settings.tg.api_id), settings.tg.api_hash)
-
 
 class TelegramManager:
-    def __init__(self):
+    def __init__(self, suffix:str = ""):
         self.client: TelegramClient|None = None
-        # self.lock = asyncio.Lock()
+        self.session_name: str = settings.tg.session + suffix
+        self.session: TelegramClient|None = None
+        self.lock = asyncio.Lock()
+        self.system_version = str(random.uniform(0.1, 100.9))
 
     async def get_client(self) ->TelegramClient:
-        # async with self.lock:
-        if self.client is None:
-            self.client = TelegramClient(settings.tg.session, int(settings.tg.api_id), settings.tg.api_hash)
-            await self.client.start()
-        return self.client
+        print("🔒 Пытаемся получить лок...")
+        try:
+            async with self.lock:
+                print("✅ Лок получен")
+                if self.client is None:
+                    print("🆕 Создаем нового клиента...")
+                    self.client = TelegramClient(
+                        session=self.session_name,
+                        api_id=int(settings.tg.api_id),
+                        api_hash=settings.tg.api_hash,
+                        system_version=self.system_version,
+                    )
+                    await self.client.start()
+                print("✅ Клиент готов")
+                return self.client
+        except asyncio.CancelledError as e:
+            print("❌ CANCELLED в get_client!")
+            raise
+        except Exception as e:
+            print(f"❌ Другая ошибка в get_client: {e}")
+            raise
+
+
 
     async def close(self):
-        # async with self.lock:
         if self.client and self.client.is_connected():
             await self.client.disconnect()
         self.client = None
@@ -33,3 +52,4 @@ class TelegramManager:
 
 
 tg_manager = TelegramManager()
+tg_manager_for_task = TelegramManager(suffix="_task")
