@@ -1,8 +1,7 @@
 from openai import OpenAI
-from telethon import TelegramClient
 
 from core.config import settings
-from core.tg_client import TelegramManager, tg_manager_for_task
+from core.tg_client import tg_manager_for_task
 
 
 async def generate_content(text: str) -> str:
@@ -46,5 +45,5 @@ async def reply_to_message(chat_id, message_id, reply_text):
         print(f"✅ Ответ отправлен на сообщение {message_id}")
     except Exception as e:
         print(f"❌ Ошибка отправки: {e}")
-    finally:
-        await tg_manager_for_task.close()
+    # finally:
+    #     await tg_manager_for_task.close()
