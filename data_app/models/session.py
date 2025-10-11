@@ -13,4 +13,4 @@ class SessionModel(Base):
     api_id:Mapped[int] = mapped_column(Integer)
     session_string:Mapped[str] = mapped_column(String, nullable=False)
     created_at:Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    # suffix:Mapped[str] = mapped_column(String, nullable=True)
+    suffix:Mapped[str] = mapped_column(String, nullable=True)

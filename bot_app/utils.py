@@ -1,8 +1,6 @@
 from openai import OpenAI
 
 from core.config import settings
-from core.tg_client import tg_manager_for_task
-
 
 async def generate_content(text: str) -> str:
 
@@ -31,19 +29,4 @@ async def generate_content(text: str) -> str:
     return new_answer
 
 
-async def reply_to_message(chat_id, message_id, reply_text):
-    """Отправка ответа на конкретное сообщение по ID"""
-    try:
-        client = await tg_manager_for_task.get_client()
-        chat_entity = await client.get_entity(chat_id)
 
-        await client.send_message(
-            entity=chat_entity,
-            message=reply_text,
-            reply_to=message_id
-        )
-        print(f"✅ Ответ отправлен на сообщение {message_id}")
-    except Exception as e:
-        print(f"❌ Ошибка отправки: {e}")
-    # finally:
-    #     await tg_manager_for_task.close()

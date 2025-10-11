@@ -1,9 +1,33 @@
+import logging
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+LOG_DEFAULT_FORMAT = (
+    "[%(asctime)s.%(msecs)03d] %(module)10s:%(lineno)-3d %(levelname)-7s - %(message)s"
+)
+WORKER_LOG_DEFAULT_FORMAT = (
+    "[%(asctime)s.%(msecs)03d][%(processName)s] %(module)16s:%(lineno)-3d %(levelname)-7s - %(message)s"
+)
+
+class LoggingConfig(BaseModel):
+    log_level: Literal[
+        "debug",
+        "info",
+        "warning",
+        "error",
+        "critical",
+    ] = "info"
+    log_format: str = LOG_DEFAULT_FORMAT
+    date_format: str = "%Y-%m-%d %H:%M:%S"
+
+    @property
+    def log_level_value(self) -> int:
+        return logging.getLevelNamesMapping()[self.log_level.upper()]
 
 class TelegramConfig(BaseModel):
     api_id:str
@@ -19,8 +43,16 @@ class DeepseekConfig(BaseModel):
     api_key:str
 
 
-class BrokerConfig(BaseModel):
-    redis_url:str
+class BrokerConfig(LoggingConfig):
+    redis_url:str = ""
+    log_format: str = WORKER_LOG_DEFAULT_FORMAT
+    log_level: Literal[
+        "debug",
+        "info",
+        "warning",
+        "error",
+        "critical",
+    ] = "info"
 
 class DataBaseConfig(BaseModel):
     url:PostgresDsn = ""
@@ -48,9 +80,10 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
         extra="ignore",
     )
-    broker: BrokerConfig
+    broker: BrokerConfig = BrokerConfig()
     db: DataBaseConfig = DataBaseConfig()
     deepseek: DeepseekConfig
+    logging: LoggingConfig = LoggingConfig()
     tg: TelegramConfig
 
 

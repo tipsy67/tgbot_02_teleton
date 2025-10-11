@@ -9,7 +9,7 @@ class Base(DeclarativeBase):
     metadata = MetaData(
         naming_convention=settings.db.naming_convention,
     )
-    id:Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)hhh
+    id:Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     def __repr__(self):
         """Универсальный repr для всех моделей"""

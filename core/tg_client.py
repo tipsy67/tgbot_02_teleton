@@ -1,87 +1,96 @@
 import asyncio
-import random
+import logging
+from typing import Optional
 
 from telethon import TelegramClient
-from telethon.sessions import MemorySession, StringSession
+from telethon.sessions import StringSession
 
 from core.config import settings
 from data_app.crud.session import save_session_string, get_session_string
 from data_app.schemas.session import SessionSchema
 
+logger = logging.getLogger(__name__)
+
 
 class TelegramManager:
-    def __init__(self, suffix:str = ""):
-        self.client: TelegramClient|None = None
+    def __init__(self, suffix: str = ""):
+        self.client: Optional[TelegramClient] = None
         self.session_name: str = settings.tg.session + suffix
-        self.session: TelegramClient|None = None
         self.lock = asyncio.Lock()
-        # self.system_version = str(random.uniform(0.1, 100.9))
         self.device_suffix = suffix
-        self.device_configs = {
-            "": {
-                "model": "iPhone 15 Pro",
-                "system": "iOS 17.1.2",
-                "app": "10.2.1"
-            },
-            "_tasks": {
-                "model": "Samsung Galaxy S24",
-                "system": "Android 14",
-                "app": "10.1.8"
-            },
-            "_worker": {
-                "model": "Desktop Windows",
-                "system": "Windows 11",
-                "app": "10.3.0"
-            }
-        }
+        logger.info("Инициализирован TelegramManager с суффиксом: %s ", suffix)
 
-    async def get_client(self):
+    async def get_client(self) -> TelegramClient:
+        """Получить клиент Telegram, создавая новый при необходимости."""
         try:
-            # async with self.lock:
-            #     print("✅ Лок получен")
-            if self.client is None:
-                config = self.device_configs.get(self.device_suffix, self.device_configs[""])
-                api_id = int(settings.tg.api_id)
-                session_string = await get_session_string(api_id)
-                if session_string is None:
-                    session=StringSession()
-                else:
-                    session=StringSession(session_string)
-                print("🆕 Создаем нового клиента...")
-                self.client = TelegramClient(
-                    session=MemorySession(),#self.session_name,
-                    api_id=int(settings.tg.api_id),
-                    api_hash=settings.tg.api_hash,
-                    # device_model=config["model"],
-                    # system_version=config["system"],
-                    # app_version=config["app"]
-                )
-                await self.client.start()
-                print(self.client.session.auth_key.key_id)
-                print("✅ Клиент готов")
-                if session_string is None:
-                    session_string = self.client.session.save()
-                    session_data = SessionSchema(
-                        api_id=api_id,
-                        session_string=session_string
-                    )
-                    await save_session_string(session_data=session_data)
+            if self.client is not None and self.client.is_connected():
+                logger.info("Возвращаем существующий подключенный клиент с суффиксом: %s ", self.device_suffix)
                 return self.client
-        except asyncio.CancelledError as e:
-            print("❌ CANCELLED в get_client!")
+
+            logger.info("Создание нового клиента Telegram с суффиксом: %s ", self.device_suffix)
+            session_data = SessionSchema(
+                api_id=int(settings.tg.api_id),
+                session_string="",
+                suffix=self.device_suffix
+            )
+
+            session_string = await get_session_string(session_data)
+            if session_string:
+                logger.info("Найдена сохраненная сессия в базе данных")
+                session = StringSession(session_string)
+            else:
+                logger.info("Создана новая сессия")
+                session = StringSession()
+
+            self.client = TelegramClient(
+                session=session,
+                api_id=int(settings.tg.api_id),
+                api_hash=settings.tg.api_hash,
+            )
+
+            logger.debug("Запускаем клиент Telegram с суффиксом: %s ...", self.device_suffix)
+            await self.client.start()
+
+            if hasattr(self.client.session, 'auth_key') and self.client.session.auth_key:
+                logger.info(f"Клиент авторизован, key_id: {self.client.session.auth_key.key_id}")
+
+            if not session_string:
+                new_session_string = self.client.session.save()
+                session_data.session_string = new_session_string
+                await save_session_string(session_data=session_data)
+                logger.info("Новая сессия сохранена в базу данных")
+
+            logger.info("Клиент Telegram успешно инициализирован с суффиксом: %s ...", self.device_suffix)
+            return self.client
+
+        except asyncio.CancelledError:
+            logger.error("Операция получения клиента была прервана")
             raise
         except Exception as e:
-            print(f"❌ Другая ошибка в get_client: {e}")
+            logger.error("Критическая ошибка при инициализации клиента Telegram: %s", e, exc_info=True)
             raise
 
-
-
     async def close(self):
-        if self.client and self.client.is_connected():
-            await self.client.disconnect()
-        self.client = None
+        """Корректно закрыть соединение с Telegram."""
+        try:
+            if self.client:
+                if self.client.is_connected():
+                    logger.info("Завершаем соединение с Telegram с суффиксом: %s ...", self.device_suffix)
+                    await self.client.disconnect()
+                    logger.info("Соединение с Telegram закрыто")
+                self.client = None
+        except Exception as e:
+            logger.error("Ошибка при закрытии клиента Telegram: %s", e, exc_info=True)
+
+    async def __aenter__(self):
+        """Поддержка контекстного менеджера."""
+        return await self.get_client()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Автоматическое закрытие при выходе из контекста."""
+        await self.close()
 
 
-
+# Создаем экземпляры менеджеров
 tg_manager = TelegramManager()
 tg_manager_for_task = TelegramManager(suffix="_task")

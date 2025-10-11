@@ -1,6 +1,26 @@
-from bot_app.utils import generate_content, reply_to_message
-from core.taskiq_broker import broker
+import logging
 
+from bot_app.utils import generate_content
+from core.taskiq_broker import broker
+from core.tg_client import tg_manager_for_task
+
+log = logging.getLogger(__name__)
+
+async def reply_to_message(chat_id, message_id, reply_text):
+    try:
+        client = await tg_manager_for_task.get_client()
+        chat_entity = await client.get_entity(chat_id)
+
+        await client.send_message(
+            entity=chat_entity,
+            message=reply_text,
+            reply_to=message_id
+        )
+        log.info("Ответ отправлен на сообщение %s", message_id)
+    except Exception as e:
+        log.error("Ошибка отправки: %s", e, exc_info=True)
+    # finally:
+    #     await tg_manager_for_task.close()
 
 @broker.task
 async def process_and_reply(chat_id, message_id, original_text):

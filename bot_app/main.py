@@ -1,11 +1,22 @@
 import asyncio
+import logging
 
 from telethon import events, TelegramClient
 
+from core.config import settings
 from core.taskiq_broker import broker
-from core.tg_client import tg_manager
+from core.tg_client import tg_manager, tg_manager_for_task
 from bot_app.tasks import process_and_reply
 
+
+
+logging.basicConfig(
+    level=settings.logging.log_level_value,
+    format=settings.logging.log_format,
+)
+
+
+log = logging.getLogger(__name__)
 #
 # @broker.on_result
 # async def send_reply(result):
@@ -27,9 +38,9 @@ async def register_tg_handler(client: TelegramClient):
                     message_id=event.message.id,
                     original_text=event.message.text
                 )
-                print(f"✅ Sent to broker: {result}")
+                log.info("Sent to broker: %s" ,result)
             except Exception as e:
-                print(f"❌ Broker error: {e}")
+                log.error("Broker error: %s", e)
 
 
 
@@ -39,12 +50,15 @@ async def main():
 
         client = await tg_manager.get_client()
 
+        await tg_manager_for_task.get_client()
+        await tg_manager_for_task.close()
+
         await register_tg_handler(client)
 
         await client.run_until_disconnected()
 
     except KeyboardInterrupt:
-        print("\n🛑 Stopped")
+        log.debug("Stopped by user")
     finally:
         await tg_manager.close()
         await broker.shutdown()
