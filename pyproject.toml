@@ -19,6 +19,9 @@ asyncpg = "^0.30.0"
 alembic = "^1.16.5"
 
 
+[tool.poetry.group.dev.dependencies]
+black = "^25.9.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

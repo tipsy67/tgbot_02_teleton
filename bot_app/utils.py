@@ -2,6 +2,7 @@ from openai import OpenAI
 
 from core.config import settings
 
+
 async def generate_content(text: str) -> str:
 
     prompt_system = "Ты Диоген"
@@ -14,7 +15,9 @@ async def generate_content(text: str) -> str:
     Верни в ответе текст отформатированный для сообщения телеграм.
     """
 
-    client_ai = OpenAI(api_key=settings.deepseek.api_key, base_url=settings.deepseek.api_url)
+    client_ai = OpenAI(
+        api_key=settings.deepseek.api_key, base_url=settings.deepseek.api_url
+    )
 
     response = client_ai.chat.completions.create(
         model="deepseek-chat",
@@ -27,6 +30,3 @@ async def generate_content(text: str) -> str:
 
     new_answer = response.choices[0].message.content
     return new_answer
-
-
-

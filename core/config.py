@@ -10,9 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DEFAULT_FORMAT = (
     "[%(asctime)s.%(msecs)03d] %(module)10s:%(lineno)-3d %(levelname)-7s - %(message)s"
 )
-WORKER_LOG_DEFAULT_FORMAT = (
-    "[%(asctime)s.%(msecs)03d][%(processName)s] %(module)16s:%(lineno)-3d %(levelname)-7s - %(message)s"
-)
+WORKER_LOG_DEFAULT_FORMAT = "[%(asctime)s.%(msecs)03d][%(processName)s] %(module)16s:%(lineno)-3d %(levelname)-7s - %(message)s"
+
 
 class LoggingConfig(BaseModel):
     log_level: Literal[
@@ -29,9 +28,11 @@ class LoggingConfig(BaseModel):
     def log_level_value(self) -> int:
         return logging.getLevelNamesMapping()[self.log_level.upper()]
 
+
 class TelegramConfig(BaseModel):
-    api_id:str
-    api_hash:str
+    api_id: str = ""
+    api_hash: str = ""
+    default_language_code: str = "en"
 
     @property
     def session(self) -> str:
@@ -39,12 +40,12 @@ class TelegramConfig(BaseModel):
 
 
 class DeepseekConfig(BaseModel):
-    api_url:str
-    api_key:str
+    api_url: str
+    api_key: str
 
 
 class BrokerConfig(LoggingConfig):
-    redis_url:str = ""
+    redis_url: str = ""
     log_format: str = WORKER_LOG_DEFAULT_FORMAT
     log_level: Literal[
         "debug",
@@ -54,8 +55,9 @@ class BrokerConfig(LoggingConfig):
         "critical",
     ] = "info"
 
+
 class DataBaseConfig(BaseModel):
-    url:PostgresDsn = ""
+    url: PostgresDsn = ""
     echo: bool = False
     echo_pool: bool = False
     pool_size: int = 50
@@ -84,9 +86,8 @@ class Settings(BaseSettings):
     db: DataBaseConfig = DataBaseConfig()
     deepseek: DeepseekConfig
     logging: LoggingConfig = LoggingConfig()
-    tg: TelegramConfig
-
-
+    tg: TelegramConfig = TelegramConfig()
+    suffixes:list[str] = ["handler" , "worker"]
 
 
 settings = Settings()
