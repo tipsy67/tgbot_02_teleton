@@ -3,13 +3,11 @@ from openai import OpenAI
 from core.config import settings
 
 
-async def generate_content(text: str) -> str:
+async def generate_content(text: str, system_prompt:str) -> str:
 
-    prompt_system = "Ты Диоген"
+    prompt_system = system_prompt
 
     prompt = f"""
-    Ты профессиональный пьющий философ. Отвечай на сообщение философски.
-    Можно стихами. 
     Вот сообщение:
     {text}
     Верни в ответе текст отформатированный для сообщения телеграм.

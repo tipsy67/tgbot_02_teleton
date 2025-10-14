@@ -12,6 +12,7 @@ class ChannelModel(Base):
     chat_id: Mapped[int] = mapped_column(BigInteger)
     prompt: Mapped[str] = mapped_column(String)
     system_prompt: Mapped[str] = mapped_column(String)
+    triggers: Mapped[str] = mapped_column(String, nullable=True)
 
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="channels")
