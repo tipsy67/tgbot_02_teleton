@@ -21,6 +21,7 @@ alembic = "^1.16.5"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.9.0"
+psutil = "^7.1.0"
 
 [build-system]
 requires = ["poetry-core"]

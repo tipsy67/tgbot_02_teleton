@@ -6,7 +6,6 @@ from taskiq_redis import RedisAsyncResultBackend
 async def inspect_all_tasks():
     result_backend = RedisAsyncResultBackend("redis://localhost:6379")
 
-    # Для Redis можно получить все ключи
     import redis
     r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 

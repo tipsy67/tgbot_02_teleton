@@ -24,7 +24,8 @@ async def initial_clients():
     tg_manager_for_worker = tg_managers["worker"]
     users = await get_active_users()
     for user in users:
-        await tg_manager_for_worker.get_client(user.phone_number)
+        client = await tg_manager_for_worker.get_client(user.phone_number)
+        # log.info(await TelegramManager.get_user_chats(client))
         await tg_manager_for_worker.close_client(user.phone_number)
         task = await initial_client.kiq(user.id, user.phone_number)
 
