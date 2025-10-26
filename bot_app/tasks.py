@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 
+from taskiq import Context
 from telethon import events
 
 from bot_app.utils import generate_content
@@ -25,16 +26,18 @@ def parse_keywords(text: str, delimiter: str = ",") -> list[str]:
 
 
 @broker.task
-async def initial_client(user_id: int, phone_number: str):
-    import psutil
-    process = psutil.Process(os.getpid())
+async def initial_client(user_id: int, phone_number: str, context:Context):
 
-    async def background_timestamp():
+    async def background_timestamp(task_id: str):
         """Фоновая задача для мониторинга"""
-        while True:
-            memory_current = process.memory_info().rss / 1024 / 1024
-            log.debug(f"⏰ BACKGROUND MONITOR {phone_number} - Memory: {memory_current:.2f} MB")
-            await asyncio.sleep(120)
+        try:
+            while True:
+
+                await asyncio.sleep(120)
+        except asyncio.CancelledError:
+            log.info("Background timestamp task cancelled")
+        finally:
+            pass
 
     async def register_tg_handler():
         log.info("register handler %s %s", user_id, phone_number)
@@ -67,7 +70,8 @@ async def initial_client(user_id: int, phone_number: str):
             finally:
                 pass
     try:
-        # monitor_task = asyncio.create_task(background_memory_monitor())
+        task_id = str(context.message.task_id)
+        monitor_task = asyncio.create_task(background_timestamp(task_id))
 
         client = await tg_manager_for_worker.get_client(phone_number)
 
@@ -89,10 +93,8 @@ async def initial_client(user_id: int, phone_number: str):
     except Exception as e:
         log.error("Main task error: %s", e)
     finally:
-        # ФИНАЛЬНЫЙ ЗАМЕР
-        memory_final = process.memory_info().rss / 1024 / 1024
-        log.info(f"🏁 FINAL - Memory: {memory_final:.2f} MB")
-        monitor_task.cancel()
+        if monitor_task and not monitor_task.done():
+            monitor_task.cancel()
         await tg_manager_for_worker.close_client(phone_number)
 
 async def reply_to_message(phone_number, chat_id, message_id, reply_text):
