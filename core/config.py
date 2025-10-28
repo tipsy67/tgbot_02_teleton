@@ -20,7 +20,7 @@ class LoggingConfig(BaseModel):
         "warning",
         "error",
         "critical",
-    ] = "debug"
+    ] = "info"
     log_format: str = LOG_DEFAULT_FORMAT
     date_format: str = "%Y-%m-%d %H:%M:%S"
 
@@ -71,6 +71,9 @@ class DataBaseConfig(BaseModel):
         "pk": "pk_%(table_name)s",
     }
 
+class HealthCheck(BaseModel):
+    heartbeat_timeout: int = 300
+    period: int = 120
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -85,6 +88,7 @@ class Settings(BaseSettings):
     broker: BrokerConfig = BrokerConfig()
     db: DataBaseConfig = DataBaseConfig()
     deepseek: DeepseekConfig
+    healthcheck: HealthCheck = HealthCheck()
     logging: LoggingConfig = LoggingConfig()
     tg: TelegramConfig = TelegramConfig()
     suffixes:list[str] = ["handler" , "worker"]

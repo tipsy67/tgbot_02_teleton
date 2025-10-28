@@ -1,12 +1,13 @@
 from redis.asyncio import Redis
 
+from core.config import settings
+
 
 class AsyncNamespacedRedis:
     def __init__(self, namespace: str, redis_client: Redis = None):
         self.namespace = namespace
-        self.redis = redis_client or Redis(
-            host='localhost',
-            port=6379,
+        self.redis = redis_client or Redis.from_url(
+            url=settings.broker.redis_url,
             decode_responses=True
         )
 
@@ -42,3 +43,6 @@ class AsyncNamespacedRedis:
 
     async def close(self):
         await self.redis.close()
+
+
+HealthCheckManager = AsyncNamespacedRedis(namespace="healthcheck")

@@ -17,6 +17,7 @@ pydantic-settings = "^2.11.0"
 sqlalchemy = {extras = ["asyncio"], version = "^2.0.44"}
 asyncpg = "^0.30.0"
 alembic = "^1.16.5"
+aioconsole = "^0.8.2"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -1,15 +1,15 @@
 import asyncio
 import logging
-import os
+from datetime import datetime, timezone
 
-from taskiq import Context
+from taskiq import Context, TaskiqDepends
 from telethon import events
 
 from bot_app.utils import generate_content
+from core.redis_store import HealthCheckManager
 from core.taskiq_broker import broker
 from core.tg_client import tg_managers
-from data_app.crud.channel import get_id_users_channels, get_users_channels
-import psutil
+from data_app.crud.channel import get_users_channels
 
 
 
@@ -26,16 +26,22 @@ def parse_keywords(text: str, delimiter: str = ",") -> list[str]:
 
 
 @broker.task
-async def initial_client(user_id: int, phone_number: str, context:Context):
+async def initial_client(user_id: int, phone_number: str, context:Context=TaskiqDepends()):
 
-    async def background_timestamp(task_id: str):
+    async def background_timestamp(task_id_lcl: str):
         """Фоновая задача для мониторинга"""
+        log.info(" start healthcheck fo %s", task_id_lcl)
         try:
             while True:
-
+                dt = datetime.now(timezone.utc)
+                result = await HealthCheckManager.set(task_id_lcl, dt.isoformat())
+                if result:
+                    log.info("Stamp healthcheck to %s %s", task_id_lcl, dt.isoformat())
+                else:
+                    log.warning("Error stamped healthcheck to %s %s", task_id_lcl, None)
                 await asyncio.sleep(120)
         except asyncio.CancelledError:
-            log.info("Background timestamp task cancelled")
+            log.info("Background timestamp task %s cancelled", task_id)
         finally:
             pass
 
@@ -69,10 +75,10 @@ async def initial_client(user_id: int, phone_number: str, context:Context):
                             log.error("Broker error: %s", e)
             finally:
                 pass
-    try:
-        task_id = str(context.message.task_id)
-        monitor_task = asyncio.create_task(background_timestamp(task_id))
 
+    task_id = str(context.message.task_id)
+    monitor_task = asyncio.create_task(background_timestamp(task_id))
+    try:
         client = await tg_manager_for_worker.get_client(phone_number)
 
         chats_obj = await get_users_channels(user_id)
@@ -95,6 +101,11 @@ async def initial_client(user_id: int, phone_number: str, context:Context):
     finally:
         if monitor_task and not monitor_task.done():
             monitor_task.cancel()
+            try:
+                await asyncio.wait_for(monitor_task, timeout=5)
+            except asyncio.TimeoutError:
+                log.warning("Monitor task %s didn't cancel in time", task_id)
+
         await tg_manager_for_worker.close_client(phone_number)
 
 async def reply_to_message(phone_number, chat_id, message_id, reply_text):
