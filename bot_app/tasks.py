@@ -6,7 +6,7 @@ from taskiq import Context, TaskiqDepends
 from telethon import events
 
 from bot_app.utils import generate_content
-from core.redis_store import HealthCheckManager
+from core.redis_store import HealthCheckManager, CancelCheckManager
 from core.taskiq_broker import broker
 from core.tg_client import tg_managers
 from data_app.crud.channel import get_users_channels
@@ -33,12 +33,7 @@ async def initial_client(user_id: int, phone_number: str, context:Context=Taskiq
         log.info(" start healthcheck fo %s", task_id_lcl)
         try:
             while True:
-                dt = datetime.now(timezone.utc)
-                result = await HealthCheckManager.set(task_id_lcl, dt.isoformat())
-                if result:
-                    log.info("Stamp healthcheck to %s %s", task_id_lcl, dt.isoformat())
-                else:
-                    log.warning("Error stamped healthcheck to %s %s", task_id_lcl, None)
+                await HealthCheckManager.set_timestamp(task_id_lcl)
                 await asyncio.sleep(120)
         except asyncio.CancelledError:
             log.info("Background timestamp task %s cancelled", task_id)
@@ -94,11 +89,30 @@ async def initial_client(user_id: int, phone_number: str, context:Context=Taskiq
 
         await register_tg_handler()
 
-        await client.run_until_disconnected()
+        client_loop_obj = asyncio.create_task(client.run_until_disconnected())
+        while not client_loop_obj.done():
+            await asyncio.sleep(30)
+            if await CancelCheckManager.get(task_id)=="1":
+                log.info("Cancel requested for task %s", task_id)
+                client_loop_obj.cancel()
+
+                try:
+                    await asyncio.wait_for(client_loop_obj, timeout=10.0)
+                    log.info("Telethon client stopped gracefully for task %s", task_id)
+                except asyncio.TimeoutError:
+                    log.warning("Telethon client task didn't stop in time for task %s", task_id)
+                except asyncio.CancelledError:
+                    log.info("Telethon client task was cancelled successfully for task %s",
+                             task_id)
+                break
+
+        log.info("Client processing completed for task %s", task_id)
 
     except Exception as e:
         log.error("Main task error: %s", e)
     finally:
+        await HealthCheckManager.delete(task_id)
+        await CancelCheckManager.delete(task_id)
         if monitor_task and not monitor_task.done():
             monitor_task.cancel()
             try:
@@ -108,17 +122,18 @@ async def initial_client(user_id: int, phone_number: str, context:Context=Taskiq
 
         await tg_manager_for_worker.close_client(phone_number)
 
+
 async def reply_to_message(phone_number, chat_id, message_id, reply_text):
     try:
         client = await tg_managers["worker"].get_client(phone_number)
         chat_entity = await client.get_entity(chat_id)
-        log.info("Ответ budet отправлен на сообщение %s", message_id)
+        log.info("Prepare send reply on message: %s", message_id)
         await client.send_message(
             entity=chat_entity, message=reply_text, reply_to=message_id
         )
-        log.info("Ответ отправлен на сообщение %s", message_id)
+        log.info("Reply send on message: %s", message_id)
     except Exception as e:
-        log.error("Ошибка отправки: %s", e, exc_info=True)
+        log.error("Error on send: %s", e, exc_info=True)
     # finally:
     #     await tg_manager_for_task.close()
 

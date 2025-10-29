@@ -1,7 +1,11 @@
+import logging
+from datetime import datetime, timezone
+
 from redis.asyncio import Redis
 
 from core.config import settings
 
+log = logging.getLogger(__name__)
 
 class AsyncNamespacedRedis:
     def __init__(self, namespace: str, redis_client: Redis = None):
@@ -44,5 +48,19 @@ class AsyncNamespacedRedis:
     async def close(self):
         await self.redis.close()
 
+    async def clear(self):
+        keys = await self.keys()
+        for key in keys:
+            await self.redis.delete(key)
+
+    async def set_timestamp(self, key:str):
+        dt = datetime.now(timezone.utc)
+        result = await self.set(key, dt.isoformat())
+        if result:
+            log.info("Stamp healthcheck to %s %s", key, dt.isoformat())
+        else:
+            log.warning("Error stamped healthcheck to %s %s", key, None)
+
 
 HealthCheckManager = AsyncNamespacedRedis(namespace="healthcheck")
+CancelCheckManager = AsyncNamespacedRedis(namespace="cancelcheck")

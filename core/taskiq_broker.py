@@ -2,7 +2,7 @@ __all__ = ("broker", "redis_source", "scheduler")
 
 import logging
 
-from taskiq import TaskiqScheduler, TaskiqEvents, TaskiqState
+from taskiq import TaskiqScheduler, TaskiqEvents, TaskiqState, Context
 from taskiq_redis import RedisAsyncResultBackend, RedisScheduleSource, RedisStreamBroker, ListQueueBroker
 
 from core.config import settings
@@ -31,20 +31,9 @@ async def on_worker_startup(state: TaskiqState) -> None:
     )
     log.info("Worker startup complete, got state: %s", state)
 
-
-# client_for_task:TelegramClient|None = None
-
-# @broker.on_event(TaskiqEvents.WORKER_STARTUP)
-# async def startup(state: TaskiqState) -> None:
-#     global client_for_task
-#     tg_manager_for_worker = TelegramManager(suffix="_task")
-#     client_for_task = await tg_manager_for_worker.get_client()
-#     await client_for_task.start()
-#     state.client = client_for_task
-#     print("✅ Клиент инициализирован в воркере")
+@broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)
+async def on_worker_shutdown(state: TaskiqState):
+    from core.redis_store import HealthCheckManager, CancelCheckManager
+    await HealthCheckManager.clear()
+    await CancelCheckManager.clear()
 #
-# @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)
-# async def shutdown(state: TaskiqState) -> None:
-#     client = getattr(state, "client", None)
-#     if client and client.is_connected():
-#         await client.disconnect()

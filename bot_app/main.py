@@ -6,7 +6,7 @@ import aioconsole
 from telethon import events, TelegramClient
 
 from core.config import settings
-from core.redis_store import HealthCheckManager
+from core.redis_store import HealthCheckManager, CancelCheckManager
 from core.taskiq_broker import broker
 from core.tg_client import tg_managers, TelegramManager
 from bot_app.tasks import process_and_reply, initial_client
@@ -34,6 +34,7 @@ async def initial_clients() -> list:
         task = await initial_client.kiq(
             user_id=user.id,
             phone_number=user.phone_number)
+        await HealthCheckManager.set_timestamp(task.task_id)
         tasks_list.append(task.task_id)
     return tasks_list
 
@@ -43,13 +44,16 @@ async def check_health(task_lists: list):
         while True:
             for task in task_lists:
                 last_timestamp_str = await HealthCheckManager.get(task)
-                last_timestamp = datetime.fromisoformat(last_timestamp_str)
-                if last_timestamp.tzinfo is None:
-                    last_timestamp = last_timestamp.replace(tzinfo=timezone.utc)
-                if last_timestamp - datetime.now(timezone.utc) > timedelta(seconds=settings.healthcheck.heartbeat_timeout):
-                    log.warning(f"Heartbeat timeout for task {task}: {last_timestamp}")
+                if not last_timestamp_str:
+                    log.warning(f"Heartbeat timeout for task {task}: missing timestamp")
                 else:
-                    log.info(f"Health Check for task {task} ok: {last_timestamp}")
+                    last_timestamp = datetime.fromisoformat(last_timestamp_str)
+                    if last_timestamp.tzinfo is None:
+                        last_timestamp = last_timestamp.replace(tzinfo=timezone.utc)
+                    if last_timestamp - datetime.now(timezone.utc) > timedelta(seconds=settings.healthcheck.heartbeat_timeout):
+                        log.warning(f"Heartbeat timeout for task {task}: {last_timestamp}")
+                    else:
+                        log.info(f"Health Check for task {task} ok: {last_timestamp}")
             await asyncio.sleep(settings.healthcheck.period)
     except asyncio.CancelledError:
         log.info("Background check health task cancelled")
@@ -59,6 +63,7 @@ async def check_health(task_lists: list):
         pass
 
 async def main():
+    HealthCheckManager.close()
     monitor_for_task = None
     try:
         await broker.startup()
@@ -74,12 +79,10 @@ async def main():
             if user_input.lower() in ('quit', 'exit', 'q'):
                 break
             if user_input in tasks_list:
-                success = True
-                if success:
-                    log.info(f"Task {user_input} cancelled successfully")
-                    # tasks_list.remove(task_id)
-                else:
-                    log.warning(f"Could not cancel task {user_input}")
+                await CancelCheckManager.set(user_input, 1)
+                log.info(f"Task {user_input} removed from task list")
+                # tasks_list.remove(user_input)
+
 
     except KeyboardInterrupt:
         log.info("Stopped by user")
