@@ -3,16 +3,13 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 import aioconsole
-from telethon import events, TelegramClient
 
 from core.config import settings
 from core.redis_store import HealthCheckManager, CancelCheckManager
 from core.taskiq_broker import broker
-from core.tg_client import tg_managers, TelegramManager
-from bot_app.tasks import process_and_reply, initial_client
-from data_app.crud.channel import get_users_channels, get_id_users_channels
+from core.tg_client import tg_managers
+from bot_app.tasks import initial_client
 from data_app.crud.user import get_active_users
-from data_app.models import ChannelModel
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -50,7 +47,7 @@ async def check_health(task_lists: list):
                     last_timestamp = datetime.fromisoformat(last_timestamp_str)
                     if last_timestamp.tzinfo is None:
                         last_timestamp = last_timestamp.replace(tzinfo=timezone.utc)
-                    if last_timestamp - datetime.now(timezone.utc) > timedelta(seconds=settings.healthcheck.heartbeat_timeout):
+                    if datetime.now(timezone.utc) - last_timestamp > timedelta(seconds=settings.healthcheck.heartbeat_timeout):
                         log.warning(f"Heartbeat timeout for task {task}: {last_timestamp}")
                     else:
                         log.info(f"Health Check for task {task} ok: {last_timestamp}")
@@ -63,7 +60,6 @@ async def check_health(task_lists: list):
         pass
 
 async def main():
-    HealthCheckManager.close()
     monitor_for_task = None
     try:
         await broker.startup()
@@ -74,17 +70,17 @@ async def main():
             monitor_for_task = asyncio.create_task(check_health(tasks_list))
 
 
-        while True:
-            user_input = await aioconsole.ainput("uhahah > ")
-            if user_input.lower() in ('quit', 'exit', 'q'):
-                break
-            if user_input in tasks_list:
-                await CancelCheckManager.set(user_input, 1)
-                log.info(f"Task {user_input} removed from task list")
-                # tasks_list.remove(user_input)
+        # while True:
+        #     user_input = await aioconsole.ainput("uhahah > ")
+        #     if user_input.lower() in ('quit', 'exit', 'q'):
+        #         break
+        #     if user_input in tasks_list:
+        #         await CancelCheckManager.set(user_input, 1)
+        #         log.info(f"Task {user_input} removed from task list")
+        #         # tasks_list.remove(user_input)
 
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
         log.info("Stopped by user")
     finally:
         if monitor_for_task and not monitor_for_task.done():
@@ -96,6 +92,8 @@ async def main():
             except asyncio.CancelledError:
                 log.info("Monitor task cancelled successfully")
         await broker.shutdown()
+        await HealthCheckManager.close()
+        await CancelCheckManager.close()
         log.info("Main script done")
 
 
@@ -103,3 +101,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
