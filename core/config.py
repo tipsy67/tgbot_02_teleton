@@ -75,6 +75,16 @@ class HealthCheck(BaseModel):
     heartbeat_timeout: int = 300
     period: int = 120
 
+
+class ApiV1Prefix(BaseModel):
+    prefix: str = "/v1"
+    users: str = "/users"
+
+
+class ApiPrefix(BaseModel):
+    prefix: str = "/api"
+    v1: ApiV1Prefix = ApiV1Prefix()
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(
@@ -85,6 +95,7 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
         extra="ignore",
     )
+    api: ApiPrefix = ApiPrefix()
     broker: BrokerConfig = BrokerConfig()
     db: DataBaseConfig = DataBaseConfig()
     deepseek: DeepseekConfig
