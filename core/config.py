@@ -79,6 +79,7 @@ class HealthCheck(BaseModel):
 class ApiV1Prefix(BaseModel):
     prefix: str = "/v1"
     users: str = "/users"
+    channels: str = "/channels"
 
 
 class ApiPrefix(BaseModel):

@@ -1,9 +1,15 @@
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from data_app.models import ChannelModel
 
+
+async def get_channels(session: AsyncSession) -> list[ChannelModel]:
+    stmt = select(ChannelModel)
+    result = await session.scalars(stmt)
+
+    return list(result.all())
 
 async def get_users_channels(user_id:int, session: AsyncSession) -> list[ChannelModel]:
     stmt = select(ChannelModel).filter(ChannelModel.user_id == user_id)

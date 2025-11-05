@@ -1,6 +1,6 @@
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from data_app.models import UserModel
 

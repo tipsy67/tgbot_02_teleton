@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, BigInteger, ForeignKey
+from sqlalchemy import Integer, String, BigInteger, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from data_app.models import Base
@@ -13,6 +13,7 @@ class ChannelModel(Base):
     prompt: Mapped[str] = mapped_column(String)
     system_prompt: Mapped[str] = mapped_column(String)
     triggers: Mapped[str] = mapped_column(String, nullable=True)
+    is_active:Mapped[bool] = mapped_column(Boolean, default=True)
 
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="channels")
