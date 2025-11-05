@@ -1,11 +1,11 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
 
 from taskiq import Context, TaskiqDepends
 from telethon import events
 
 from bot_app.utils import generate_content
+from core.db_helper import db_helper
 from core.redis_store import HealthCheckManager, CancelCheckManager
 from core.taskiq_broker import broker
 from core.tg_client import tg_managers
@@ -30,7 +30,7 @@ async def initial_client(user_id: int, phone_number: str, context:Context=Taskiq
 
     async def background_timestamp(task_id_lcl: str):
         """Фоновая задача для мониторинга"""
-        log.info(" start healthcheck fo %s", task_id_lcl)
+        log.info("Start healthcheck fo %s", task_id_lcl)
         try:
             while True:
                 await HealthCheckManager.set_timestamp(task_id_lcl)
@@ -41,19 +41,19 @@ async def initial_client(user_id: int, phone_number: str, context:Context=Taskiq
             pass
 
     async def register_tg_handler():
-        log.info("register handler %s %s", user_id, phone_number)
+        log.info("Register handler %s %s", user_id, phone_number)
 
         @client.on(events.NewMessage(chats=chat_ids))
         async def message_handler(event):
             try:
-                log.info("handler start %s %s", event.chat_id, phone_number)
+                log.info("Handler start %s %s", event.chat_id, phone_number)
                 if event.chat_id in chat_ids and not event.message.out:
-                    log.info("handler chats verify ok %s %s", event.chat_id, phone_number)
+                    log.info("Handler chats verify ok %s %s", event.chat_id, phone_number)
 
                     message_text = event.message.text.lower() if event.message.text else ""
                     chat_data = chats.get(event.chat_id)
                     triggers = parse_keywords(chat_data.get("triggers"))
-                    log.info("triggers %s", triggers)
+                    log.info("Triggers %s", triggers)
 
                     if all(trigger in message_text for trigger in triggers) or triggers == []:
                         try:
@@ -76,7 +76,9 @@ async def initial_client(user_id: int, phone_number: str, context:Context=Taskiq
     try:
         client = await tg_manager_for_worker.get_client(phone_number)
 
-        chats_obj = await get_users_channels(user_id)
+        async with db_helper.session_factory() as session:
+            chats_obj = await get_users_channels(user_id, session)
+
         chats = {
             chat.chat_id: {
                 "system_prompt": chat.system_prompt,

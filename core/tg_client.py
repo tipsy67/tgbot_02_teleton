@@ -7,6 +7,7 @@ from telethon.errors import SessionPasswordNeededError, PhoneNumberInvalidError,
 from telethon.sessions import StringSession
 
 from core.config import settings
+from core.db_helper import db_helper
 from data_app.crud.session import save_session_string, get_session_string
 from data_app.schemas.session import SessionSchema
 
@@ -52,7 +53,9 @@ class TelegramManager:
                 suffix=self._suffix,
             )
 
-            session_string = await get_session_string(session_data)
+            async with db_helper.session_factory() as session:
+                session_string = await get_session_string(session_data, session)
+
             if session_string:
                 log.info("Найдена сохраненная сессия в базе данных")
                 session = StringSession(session_string)
@@ -156,7 +159,8 @@ class TelegramManager:
                 session_string=session_string,
                 suffix=self._suffix,
             )
-            await save_session_string(session_data)
+            async with db_helper.session_factory() as session:
+                await save_session_string(session_data, session)
         except Exception as e:
             log.error(
                 "Ошибка сохранения сессии для %s: %s",

@@ -22,7 +22,9 @@ log = logging.getLogger(__name__)
 
 async def initial_clients() -> list:
     tg_manager_for_worker = tg_managers["worker"]
-    users = await get_active_users()
+    from core.db_helper import db_helper
+    async with db_helper.session_factory() as session:
+        users = await get_active_users(session)
     tasks_list = []
     for user in users:
         client = await tg_manager_for_worker.get_client(user.phone_number)
