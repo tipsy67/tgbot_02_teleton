@@ -54,6 +54,7 @@ class BrokerConfig(LoggingConfig):
         "error",
         "critical",
     ] = "info"
+    queue_name: str = "taskiq:queue"
 
 
 class DataBaseConfig(BaseModel):
@@ -103,7 +104,7 @@ class Settings(BaseSettings):
     healthcheck: HealthCheck = HealthCheck()
     logging: LoggingConfig = LoggingConfig()
     tg: TelegramConfig = TelegramConfig()
-    suffixes:list[str] = ["handler" , "worker"]
+    suffixes:list[str] = ["worker"]
 
 
 settings = Settings()

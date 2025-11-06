@@ -1,6 +1,7 @@
 __all__ = ("broker", "redis_source", "scheduler")
 
 import logging
+import uuid
 
 from taskiq import TaskiqScheduler, TaskiqEvents, TaskiqState, Context
 from taskiq_redis import RedisAsyncResultBackend, RedisScheduleSource, RedisStreamBroker, ListQueueBroker
@@ -11,9 +12,10 @@ result_backend = RedisAsyncResultBackend(
     redis_url=settings.broker.redis_url,
 )
 
-# broker = RedisStreamBroker(
+
 broker = ListQueueBroker(
         url=settings.broker.redis_url,
+        queue_name=settings.broker.queue_name,
 ).with_result_backend(result_backend)
 
 redis_source = RedisScheduleSource(settings.broker.redis_url)

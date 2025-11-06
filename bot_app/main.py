@@ -5,11 +5,12 @@ from datetime import datetime, timezone, timedelta
 import aioconsole
 
 from core.config import settings
-from core.redis_store import HealthCheckManager, CancelCheckManager
+from core.redis_store import HealthCheckManager, CancelCheckManager, TaskiqQueueManager
 from core.taskiq_broker import broker
 from core.tg_client import tg_managers
 from bot_app.tasks import initial_client
 from data_app.crud.user import get_active_users
+from core.db_helper import db_helper
 
 logging.basicConfig(
     level=settings.logging.log_level_value,
@@ -22,17 +23,20 @@ log = logging.getLogger(__name__)
 
 async def initial_clients() -> list:
     tg_manager_for_worker = tg_managers["worker"]
-    from core.db_helper import db_helper
+
     async with db_helper.session_factory() as session:
         users = await get_active_users(session)
+
     tasks_list = []
     for user in users:
         client = await tg_manager_for_worker.get_client(user.phone_number)
         # log.info(await TelegramManager.get_user_chats(client))
         await tg_manager_for_worker.close_client(user.phone_number)
-        task = await initial_client.kiq(
+        task = await initial_client.kicker().with_task_id(f"bot_task_{user.tg_id}").kiq(
             user_id=user.id,
-            phone_number=user.phone_number)
+            phone_number=user.phone_number,
+        )
+
         await HealthCheckManager.set_timestamp(task.task_id)
         tasks_list.append(task.task_id)
     return tasks_list
@@ -65,6 +69,9 @@ async def main():
     monitor_for_task = None
     try:
         await broker.startup()
+
+        await TaskiqQueueManager.delete("queue")
+
         tasks_list = await initial_clients()
         print(tasks_list)
         if len(tasks_list) > 0:
@@ -96,6 +103,7 @@ async def main():
         await broker.shutdown()
         await HealthCheckManager.close()
         await CancelCheckManager.close()
+        await TaskiqQueueManager.close()
         log.info("Main script done")
 
 

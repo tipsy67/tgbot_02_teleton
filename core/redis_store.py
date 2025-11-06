@@ -64,3 +64,4 @@ class AsyncNamespacedRedis:
 
 HealthCheckManager = AsyncNamespacedRedis(namespace="healthcheck")
 CancelCheckManager = AsyncNamespacedRedis(namespace="cancelcheck")
+TaskiqQueueManager = AsyncNamespacedRedis(namespace="taskiq")
