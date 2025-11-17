@@ -15,13 +15,13 @@ async def get_users_channels(user_id:int, session: AsyncSession) -> list[Channel
     stmt = select(ChannelModel).filter(ChannelModel.user_id == user_id)
     result = await session.scalars(stmt)
 
-    return result.all()
+    return list(result.all())
 
-async def get_id_users_channels(user_id:int, session: AsyncSession) -> list[ChannelModel]:
+async def get_id_users_channels(user_id:int, session: AsyncSession) -> list[int]:
     stmt = select(ChannelModel.chat_id).filter(ChannelModel.user_id == user_id)
     result = await session.scalars(stmt)
 
-    return result.all()
+    return list(result.all())
 
 
 
