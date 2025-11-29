@@ -9,7 +9,7 @@ async def get_active_users(session: AsyncSession) -> list[UserModel]:
     stmt = select(UserModel).filter(UserModel.is_active == True)
     result = await session.scalars(stmt)
 
-    return result.all()
+    return list(result.all())
 
 
 async def get_user_by_phone(phone_number:str, session: AsyncSession) -> UserModel:
