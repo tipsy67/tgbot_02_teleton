@@ -31,6 +31,7 @@ class UserModel(Base):
     channels: Mapped[list[ChannelModel]] = relationship(
         "ChannelModel", back_populates="user", cascade="all, delete-orphan"
     )
+
     sessions: Mapped[list[SessionModel]] = relationship(
         "SessionModel", back_populates="user", cascade="all, delete-orphan"
     )
